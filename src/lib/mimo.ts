@@ -72,7 +72,7 @@ async function callMimo(opts: MimoCallOptions): Promise<Response> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${cfg.apiKey}`,
       "HTTP-Referer": "https://chronos.vercel.app",
-      "X-Title": "Chronos — Onchain Event Replay",
+      "X-Title": "Chronos - Onchain Event Replay",
     },
     body: JSON.stringify(body),
     signal: opts.signal,
