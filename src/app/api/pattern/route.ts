@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEvent, patternMatch } from "@/lib/events";
 import { SYSTEM_PATTERN } from "@/lib/prompts";
-import { completeText, MimoUnavailableError } from "@/lib/mimo";
+import { completeText, isMimoFallback } from "@/lib/mimo";
+import { mockPatternExplanation } from "@/lib/mock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/pattern?eventId=...&matchId=...
- *
- * Returns:
- *   - pre-computed similarity matches if matchId omitted
- *   - MiMo-generated explanation comparing eventId ↔ matchId if both supplied
- */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const eventId = url.searchParams.get("eventId") ?? "";
@@ -58,11 +52,11 @@ export async function GET(req: NextRequest) {
       source: "mimo",
     });
   } catch (e) {
-    if (e instanceof MimoUnavailableError) {
+    if (isMimoFallback(e)) {
       return NextResponse.json({
-        explanation: `[mock — set MIMO_API_KEY] ${target.shortName} resembles ${match.shortName} on these axes: ${overlap.join(", ")}.`,
+        explanation: mockPatternExplanation(target, match, overlap),
         overlap,
-        source: "mock",
+        source: "corpus",
       });
     }
     return NextResponse.json(

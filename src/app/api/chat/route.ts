@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEvent } from "@/lib/events";
 import { buildContextWindow, SYSTEM_CHAT } from "@/lib/prompts";
-import { completeText, MimoUnavailableError } from "@/lib/mimo";
+import { completeText, isMimoFallback } from "@/lib/mimo";
+import { mockChatReply } from "@/lib/mock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,9 +14,6 @@ interface ChatBody {
   history?: { role: "user" | "assistant"; content: string }[];
 }
 
-/**
- * POST /api/chat — Q&A grounded in the event corpus.
- */
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as ChatBody;
   const event = getEvent(body.eventId);
@@ -41,10 +39,10 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ reply, source: "mimo" });
   } catch (e) {
-    if (e instanceof MimoUnavailableError) {
+    if (isMimoFallback(e)) {
       return NextResponse.json({
-        reply: `[mock — set MIMO_API_KEY] You asked: "${body.question}". Configure MiMo v2.5 Pro to get a real answer grounded in the ${event.shortName} corpus.`,
-        source: "mock",
+        reply: mockChatReply(event, body.question, body.cursor || Date.parse(event.startsAt)),
+        source: "corpus",
       });
     }
     return NextResponse.json(

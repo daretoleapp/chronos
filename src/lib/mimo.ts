@@ -53,6 +53,28 @@ export class MimoUnavailableError extends Error {
   }
 }
 
+/**
+ * Thrown when the upstream MiMo endpoint returns a non-2xx response
+ * (rate limit, insufficient credits, 5xx, etc). Routes catch this and
+ * fall back to deterministic corpus-based mock output so the demo stays
+ * usable on a budget-constrained API key.
+ */
+export class MimoUpstreamError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "MimoUpstreamError";
+    this.status = status;
+  }
+}
+
+/**
+ * Convenience: any error class that signals "fall back to mock cleanly."
+ */
+export function isMimoFallback(e: unknown): e is MimoUnavailableError | MimoUpstreamError {
+  return e instanceof MimoUnavailableError || e instanceof MimoUpstreamError;
+}
+
 async function callMimo(opts: MimoCallOptions): Promise<Response> {
   const cfg = getMimoConfig();
   if (!cfg.apiKey) {
@@ -79,8 +101,9 @@ async function callMimo(opts: MimoCallOptions): Promise<Response> {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(
-      `MiMo upstream error ${res.status}: ${text.slice(0, 200)}`,
+    throw new MimoUpstreamError(
+      res.status,
+      `MiMo upstream ${res.status}: ${text.slice(0, 200)}`,
     );
   }
   return res;

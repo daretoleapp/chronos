@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEvent } from "@/lib/events";
 import { buildContextWindow, SYSTEM_REPORT } from "@/lib/prompts";
-import { completeText, MimoUnavailableError } from "@/lib/mimo";
+import { completeText, isMimoFallback } from "@/lib/mimo";
+import { mockReport } from "@/lib/mock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/report?eventId=ftx-collapse — auto-generated markdown post-mortem.
- */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const eventId = url.searchParams.get("eventId") ?? "";
@@ -17,7 +15,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unknown eventId" }, { status: 400 });
   }
 
-  // Use the event midpoint as cursor and a wide window so the corpus is exhaustive.
   const start = Date.parse(event.startsAt);
   const end = Date.parse(event.endsAt);
   const cursor = (start + end) / 2;
@@ -35,14 +32,18 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
         "Content-Disposition": `inline; filename="${event.id}.md"`,
+        "x-chronos-source": "mimo",
       },
     });
   } catch (e) {
-    if (e instanceof MimoUnavailableError) {
-      return new NextResponse(
-        `# ${event.name}\n\n_[mock — set MIMO_API_KEY to generate a real report]_\n`,
-        { headers: { "Content-Type": "text/markdown; charset=utf-8" } },
-      );
+    if (isMimoFallback(e)) {
+      return new NextResponse(mockReport(event), {
+        headers: {
+          "Content-Type": "text/markdown; charset=utf-8",
+          "Content-Disposition": `inline; filename="${event.id}.md"`,
+          "x-chronos-source": "corpus",
+        },
+      });
     }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "upstream" },

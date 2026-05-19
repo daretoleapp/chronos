@@ -34,7 +34,7 @@ export function Commentary({ eventId, cursor }: Props) {
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5 min-h-[220px]">
       <div className="flex items-center justify-between mb-3">
         <div className="text-xs uppercase tracking-widest text-amber-500/80">
-          Live Commentary · MiMo v2.5 Pro
+          Live Commentary
         </div>
         {streaming && (
           <div className="flex items-center gap-2 text-xs text-zinc-500">
